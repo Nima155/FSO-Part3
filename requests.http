@@ -1,0 +1,16 @@
+POST http://localhost:3001/api/persons HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Nima Shadab",
+    "number": "032-434213"
+}
+###
+POST http://localhost:3001/api/persons HTTP/1.1
+content-type: application/json
+
+{
+    "number": "Nima Shadab"
+}
+
+// testing framework
