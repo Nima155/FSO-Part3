@@ -3,6 +3,7 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const app = express();
+app.use(express.static("build"));
 // cors middleware to allow for transfers betweeen two different addresses
 app.use(cors());
 // express json middleware
