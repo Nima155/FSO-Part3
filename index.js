@@ -53,7 +53,6 @@ app.delete("/api/persons/:id", (request, response) => {
 });
 
 app.post("/api/persons", (request, response) => {
-	console.log(request.body);
 	if (!request.body.name || !request.body.number) {
 		// 400: bad request
 		return response
@@ -71,6 +70,6 @@ app.post("/api/persons", (request, response) => {
 	NOTES = NOTES.concat(note);
 	response.json(note);
 });
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.listen(PORT);
