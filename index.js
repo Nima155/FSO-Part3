@@ -1,7 +1,10 @@
 // middlewares
+const personMongooseModel = require("./models/person");
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
+const ObjectId = require("mongoose").Types.ObjectId;
+
 const app = express();
 app.use(express.static("build"));
 // cors middleware to allow for transfers betweeen two different addresses
@@ -18,59 +21,103 @@ app.use(
 	)
 );
 
-let NOTES = [
-	{ id: 1, name: "Arto Hellas", number: "040-123456" },
-	{ id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
-	{ id: 3, name: "Dan Abramov", number: "12-43-234345" },
-	{ id: 4, name: "Mary Poppendick", number: "39-23-6423122" },
-];
-
 // getting the collectin of resources
-app.get("/api/persons", (request, response) => {
-	// console.log("hey");
-	response.json(NOTES);
+app.get("/api/persons", async (request, response) => {
+	response.json(await personMongooseModel.find({}).then((res) => res));
 });
 // getting info about our collection of  resources
-app.get("/info", (request, response) => {
+app.get("/info", async (request, response) => {
+	const len = await personMongooseModel.countDocuments({});
 	response.send(`<div>
-        <p>Phonebook has info for ${NOTES.length} people</p>
+        <p>Phonebook has info for ${len} people</p>
         <p>${Date()}</p>
     </div>`);
 });
 // getting an specific resource
-app.get("/api/persons/:id", (request, response) => {
-	const id = parseInt(request.params.id);
-	const element = NOTES.find((ele) => ele.id === id);
-	if (element === undefined) {
-		response.status(404).end();
-	}
-	response.json(element);
+app.get("/api/persons/:id", (request, response, next) => {
+	personMongooseModel
+		.findById(request.params.id)
+		.then((res) => {
+			if (res) {
+				response.json(res);
+			} else {
+				response.status(404).json({ error: "Not found" });
+			}
+		})
+		.catch((error) => next(error));
+});
+// delete server-side logic
+app.delete("/api/persons/:id", (request, response, next) => {
+	const id = request.params.id;
+	personMongooseModel
+		.findByIdAndRemove(id)
+		.then((res) => {
+			if (!res) {
+				response.status(400).end();
+				return;
+			}
+			response.status(204).end();
+		})
+		.catch((error) => next(error));
 });
 
-app.delete("/api/persons/:id", (request, response) => {
-	const id = parseInt(request.params.id);
-	NOTES = NOTES.filter((ele) => ele.id !== id);
-	response.status(204).end();
+app.put("/api/persons/:id", (request, response, next) => {
+	const body = request.body;
+	const newPerson = {
+		name: body.name,
+		number: body.number,
+	};
+	// 60d9ceb59c309b1820966a91
+	// 60d9ceb59c309b1820966a91
+	personMongooseModel
+		.findOneAndUpdate({ _id: new ObjectId(request.params.id) }, newPerson, {
+			new: true,
+			// by default validators don't run on updates.. so we must set runValidators to true
+			runValidators: true,
+			context: "query",
+		})
+		.then((res) => {
+			if (res) {
+				response.json(res);
+			}
+		})
+		.catch((error) => {
+			response.status(400).json({ message: error.message });
+		});
 });
 
-app.post("/api/persons", (request, response) => {
-	if (!request.body.name || !request.body.number) {
-		// 400: bad request
-		return response
-			.status(400)
-			.json({ error: `missing ${!request.body.name ? "name" : "number"}` });
-	} else if (NOTES.find((ele) => ele.name === request.body.name)) {
-		return response.status(400).json({ error: "name must be unique" });
-	}
-	const note = {
+app.post("/api/persons", (request, response, next) => {
+	const note = new personMongooseModel({
 		name: request.body.name,
 		number: request.body.number,
 		// this could lead to duplicate id's
-		id: Math.floor(Math.random() * 1000000),
-	};
-	NOTES = NOTES.concat(note);
-	response.json(note);
+	});
+	note
+		.save()
+		.then((res) => {
+			return response.json(res);
+		})
+		.catch((error) => {
+			response.status(400).json({ error: error.message });
+		});
 });
+
+// middleware for handling requests to routes that don't exits
+app.use((request, response) => {
+	response.status(404).send({ error: "Page not found" });
+});
+
+// error handling middleware
+app.use((error, request, response, next) => {
+	if (error.name === "ValidationError") {
+		return response.status(400).json({ error: "Name must be unique" });
+	}
+	if (error.name === "CastError") {
+		return response.status(400).json({ error: "Id format must be valid" });
+	}
+	next(error);
+});
+
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT);
