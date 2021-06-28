@@ -1,6 +1,6 @@
 // middlewares
 /* global process */
-const personMongooseModel = require("./models/person")
+const Person = require("./models/person")
 const express = require("express")
 const morgan = require("morgan")
 const cors = require("cors")
@@ -24,11 +24,11 @@ app.use(
 
 // getting the collectin of resources
 app.get("/api/persons", async (request, response) => {
-	response.json(await personMongooseModel.find({}).then((res) => res))
+	response.json(await Person.find({}).then((res) => res))
 })
 // getting info about our collection of  resources
 app.get("/info", async (request, response) => {
-	const len = await personMongooseModel.countDocuments({})
+	const len = await Person.countDocuments({})
 	response.send(`<div>
         <p>Phonebook has info for ${len} people</p>
         <p>${Date()}</p>
@@ -36,8 +36,7 @@ app.get("/info", async (request, response) => {
 })
 // getting an specific resource
 app.get("/api/persons/:id", (request, response, next) => {
-	personMongooseModel
-		.findById(request.params.id)
+	Person.findById(request.params.id)
 		.then((res) => {
 			if (res) {
 				response.json(res)
@@ -50,8 +49,7 @@ app.get("/api/persons/:id", (request, response, next) => {
 // delete server-side logic
 app.delete("/api/persons/:id", (request, response, next) => {
 	const id = request.params.id
-	personMongooseModel
-		.findByIdAndRemove(id)
+	Person.findByIdAndRemove(id)
 		.then((res) => {
 			if (!res) {
 				response.status(400).end()
@@ -70,13 +68,12 @@ app.put("/api/persons/:id", (request, response) => {
 	}
 	// 60d9ceb59c309b1820966a91
 	// 60d9ceb59c309b1820966a91
-	personMongooseModel
-		.findOneAndUpdate({ _id: new ObjectId(request.params.id) }, newPerson, {
-			new: true,
-			// by default validators don't run on updates.. so we must set runValidators to true
-			runValidators: true,
-			context: "query",
-		})
+	Person.findOneAndUpdate({ _id: new ObjectId(request.params.id) }, newPerson, {
+		new: true,
+		// by default validators don't run on updates.. so we must set runValidators to true
+		runValidators: true,
+		context: "query",
+	})
 		.then((res) => {
 			if (res) {
 				response.json(res)
@@ -88,7 +85,7 @@ app.put("/api/persons/:id", (request, response) => {
 })
 
 app.post("/api/persons", (request, response) => {
-	const note = new personMongooseModel({
+	const note = new Person({
 		name: request.body.name,
 		number: request.body.number,
 		// this could lead to duplicate id's
